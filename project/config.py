@@ -6,6 +6,7 @@ class BaseConfig:
     SECRET_KEY = "my_precious"
     ACCESS_TOKEN_EXPIRATION = 300
     REFRESH_TOKEN_EXPIRATION = 86400
+    ACTIVATION_CODE_EXPIRATION = 1200
 
 
 class DevelopmentConfig(BaseConfig):

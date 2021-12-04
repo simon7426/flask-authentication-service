@@ -60,7 +60,8 @@ class Register(Resource):
         user = add_user(username=username, password=password)
         account = add_account(account_name = account_name, username = user.username)
         activation = add_activation(account_name = account.account_name)
-        print(activation)
+        # * Send Activation Code to user account via Email service or SMS service * #
+        print(activation.activation_code)
         return user, 201
 
 class Login(Resource):
