@@ -1,6 +1,7 @@
+from datetime import datetime
 from sqlalchemy.orm import session
 from project import db
-from project.apis.users.models import User, Account
+from project.apis.users.models import Activation, User, Account
 
 def get_all_users():
     return User.query.all()
@@ -40,3 +41,17 @@ def delete_account(account):
     db.session.delete(account)
     db.session.commit()
     return account
+
+def add_activation(account_name):
+    activation = Activation(account_name)
+    db.session.add()
+    db.session.commit()
+    return activation.activation_code
+
+def get_activation(account_name, activation_code):
+    return Activation.query.filter_by(account_name=account_name,activation_code=activation_code).first()
+    
+def update_activation(activation):
+    activation.status = True
+    db.session.commit()
+    return activation

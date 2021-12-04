@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import jwt
 from flask import current_app
-from flask.globals import session
+from random import randint
 from sqlalchemy.sql import func
 
 from project import db,bcrypt
@@ -13,8 +13,9 @@ class User(db.Model):
     id = db.Column(db.Integer,primary_key=True, autoincrement=True)
     username = db.Column(db.String(128), nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    active = db.Column(db.Boolean(), default=True, nullable=False)
-    created_date = db.Column(db.DateTime, default=func.now(), nullable=False)
+    active = db.Column(db.Boolean(), default=False, nullable=False)
+    created_date = db.Column(db.DateTime, server_default=func.utcnow(), nullable=False)
+    activate_date = db.Column(db.DateTime)
 
     def __init__(self, username="", password=""):
         self.username = username
@@ -55,7 +56,22 @@ class Account(db.Model):
     id = db.Column(db.Integer,primary_key=True, autoincrement=True)
     account_name = db.Column(db.String(128), nullable=False)
     username = db.Column(db.String(128), nullable=False)
+    is_verified = db.Column(db.Boolean(), default=False, nullable=False)
+    added_on = db.Column(db.DateTime, server_default=func.utcnow(), nullable=False)
 
     def __init__(self, account_name="", username=""):
         self.account_name = account_name
         self.username = username
+
+
+class Activation(db.Model):
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    account_name = db.Column(db.String(128), nullable=False)
+    activation_code = db.Column(db.String(20), nullable=False)
+    status = db.Column(db.Boolean(), default=False, nullable=False)
+    created_date = db.Column(db.DateTime, server_default=func.utcnow(), nullable=False)
+    expiration_time = db.Column(db.Datetime, server_default=func.utcnow()+timedelta(minutes=15), nullable=False)
+
+    def __init__(self, account_name=""):
+        self.account_name = account_name
+        self.activation_code = ''.join(["{}".format(randint(0, 9)) for i in range(0, 9)])
