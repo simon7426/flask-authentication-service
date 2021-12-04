@@ -4,10 +4,12 @@ from flask_restx import Api
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
+from flask_redis import FlaskRedis
 
 cors = CORS()
 db = SQLAlchemy()
 bcrypt = Bcrypt()
+redis_client = FlaskRedis()
 
 def create_app():
     app = Flask(__name__)
@@ -18,6 +20,7 @@ def create_app():
     cors.init_app(app)
     db.init_app(app)
     bcrypt.init_app(app)
+    redis_client.init_app(app)
 
     from project.apis import api
     api.init_app(app)

@@ -10,6 +10,7 @@ class BaseConfig:
 
 class DevelopmentConfig(BaseConfig):
     SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL","postgresql://postgres:7426@localhost:5432/flask_auth")
+    REDIS_URL = "redis://localhost:6379/0"
     BCRYPT_LOG_ROUNDS = 4
 
 

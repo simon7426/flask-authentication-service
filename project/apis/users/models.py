@@ -47,7 +47,7 @@ class User(db.Model):
             current_app.config.get("SECRET_KEY"), 
             algorithms="HS256",
         )
-        return payload["sub"]
+        return payload["sub"], payload["type"]
 
 class Account(db.Model):
     __tablename__ = "account"
