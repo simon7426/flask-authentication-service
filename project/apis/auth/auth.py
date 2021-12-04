@@ -4,7 +4,7 @@ from flask_restx import Namespace, Resource, fields
 
 from project import bcrypt
 from project.apis.auth.utils import add_token_to_blacklist, check_token_in_blacklist
-from project.apis.users.crud import add_user, get_user_by_account, get_user_by_username
+from project.apis.users.crud import add_account, add_activation, add_user, get_user_by_account, get_user_by_username
 from project.apis.users.models import User
 
 auth_namespace = Namespace("auth")
@@ -57,7 +57,10 @@ class Register(Resource):
         user_username = get_user_by_username(username)
         if user_username:
             auth_namespace.abort(400, "Sorry. That username already exists.")
-        user = add_user(username=username, account_name=account_name, password=password)
+        user = add_user(username=username, password=password)
+        account = add_account(account_name = account_name, username = user.username)
+        activation = add_activation(account_name = account.account_name)
+        print(activation)
         return user, 201
 
 class Login(Resource):
@@ -74,8 +77,12 @@ class Login(Resource):
         if get_user_by_account(username):
             username = get_user_by_account(username).username
         user = get_user_by_username(username)
-        if not user or not bcrypt.check_password_hash(user.password, password):
-            auth_namespace.abort(404, "User does not exist.")
+        if not user:
+            auth_namespace.abort(404, "Invalid username or password.")
+        if not bcrypt.check_password_hash(user.password, password):
+            auth_namespace.abort(404, "Invalid username or password.")
+        if not user.active:
+            auth_namespace.abort(401, "User is not verified.")
         access_token = user.encode_token(user.username, "access")
         refresh_token = user.encode_token(user.username, "refresh")
 

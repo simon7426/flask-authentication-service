@@ -18,11 +18,9 @@ def get_user_by_account(account_name):
         return get_user_by_username(account.username)
     return None
 
-def add_user(username, account_name, password):
+def add_user(username, password):
     user = User(username=username, password=password)
-    account = Account(account_name=account_name, username=username)
     db.session.add(user)
-    db.session.add(account)
     db.session.commit()
     return user
 
