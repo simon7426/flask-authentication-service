@@ -1,10 +1,11 @@
+from datetime import datetime
 import jwt 
 from flask import request
 from flask_restx import Namespace, Resource, fields
 
 from project import bcrypt
 from project.apis.auth.utils import add_token_to_blacklist, check_token_in_blacklist
-from project.apis.users.crud import add_account, add_activation, add_user, get_user_by_account, get_user_by_username
+from project.apis.users.crud import add_account, add_activation, add_user, get_account, get_activation, get_user_by_account, get_user_by_username, verify_account, verify_activation, verify_user
 from project.apis.users.models import User
 
 auth_namespace = Namespace("auth")
@@ -13,6 +14,13 @@ user = auth_namespace.model(
     "User",
     {
         "username": fields.String(required=True),
+    },
+)
+
+account = auth_namespace.model(
+    "Account",
+    {
+        "account_name": fields.String(required=True),
     },
 )
 
@@ -34,6 +42,14 @@ refresh = auth_namespace.model(
 
 tokens = auth_namespace.clone(
     "Access and refresh_tokens", refresh, {"access_token": fields.String(required=True)}
+)
+
+activation_model = auth_namespace.model(
+    "Activate User",
+    {
+        "account_name": fields.String(required=True),
+        "activation_code": fields.String(required=True),
+    },
 )
 
 parser = auth_namespace.parser()
@@ -167,8 +183,31 @@ class Logout(Resource):
         except jwt.InvalidTokenError:
             auth_namespace.abort(401, "Invalid token. Please log in again.")
 
+class Activate(Resource):
+    @auth_namespace.marshal_with(account)
+    @auth_namespace.expect(activation_model)
+    @auth_namespace.response(200, "Account verified successfully.")
+    @auth_namespace.response(401, "Token expired/invalid.")
+    def post(self):
+        post_data = request.get_json()
+        account_name = post_data.get("account_name")
+        activation_code = post_data.get("activation_code")
+
+        activation = get_activation(account_name=account_name,activation_code=activation_code)
+        if not activation or activation.expiration_time<datetime.utcnow() or activation.status == True:
+            auth_namespace.abort(401, "Token expired/invalid.")
+        account = get_account(account_name)
+        user = get_user_by_account(account.account_name)
+        verify_activation(activation)
+        verify_account(account)
+        if user.active == False:
+            verify_user(user)
+        return account
+
+        
 auth_namespace.add_resource(Register,"/register",endpoint="register")
 auth_namespace.add_resource(Login,"/login",endpoint="login")
 auth_namespace.add_resource(Status,"/status",endpoint="status")
 auth_namespace.add_resource(Refresh,"/refresh",endpoint="refresh")
 auth_namespace.add_resource(Logout,"/logout",endpoint="logout")
+auth_namespace.add_resource(Activate,"/activate",endpoint="activate")
