@@ -7,12 +7,20 @@ from flask_restx import Namespace, Resource, fields
 from project import bcrypt
 from project.apis.auth.utils import (add_token_to_blacklist,
                                      check_token_in_blacklist)
-from project.apis.users.crud import (add_account, add_activation, add_user,
-                                     get_account, get_activation,
-                                     get_user_by_account, get_user_by_username,
-                                     verify_account, verify_activation,
-                                     verify_user)
 from project.apis.users.models import User
+
+from project.apis.users.crud import (  # isort:skip
+    add_account,
+    add_activation,
+    add_user,
+    get_account,
+    get_activation,
+    get_user_by_account,
+    get_user_by_username,
+    verify_account,
+    verify_activation,
+    verify_user,
+)
 
 auth_namespace = Namespace("auth")
 
@@ -220,14 +228,14 @@ class Activate(Resource):
         if (
             not activation
             or activation.expiration_time < datetime.utcnow()
-            or activation.status == True
+            or activation.status
         ):
             auth_namespace.abort(401, "Token expired/invalid.")
         account = get_account(account_name)
         user = get_user_by_account(account.account_name)
         verify_activation(activation)
         verify_account(account)
-        if user.active == False:
+        if not user.active:
             verify_user(user)
         return account
 

@@ -1,8 +1,3 @@
-from datetime import datetime
-from re import L
-
-from sqlalchemy.orm import session
-
 from project import db
 from project.apis.users.models import Account, Activation, User
 

@@ -1,6 +1,6 @@
 import os
 
-from flask_restx import Api, Namespace, Resource
+from flask_restx import Namespace, Resource
 
 ping_namespace = Namespace("ping")
 
