@@ -1,5 +1,6 @@
 import os
 
+
 class BaseConfig:
     TESTING = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
@@ -10,14 +11,18 @@ class BaseConfig:
 
 
 class DevelopmentConfig(BaseConfig):
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL","postgresql://postgres:7426@localhost:5432/flask_auth")
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DATABASE_URL", "postgresql://postgres:7426@localhost:5432/flask_auth"
+    )
     REDIS_URL = "redis://localhost:6379/0"
     BCRYPT_LOG_ROUNDS = 4
 
 
 class TestingConfig(BaseConfig):
     TESTING = True
-    SQLALCHEMY_DATABASE_URI = os.environ.get("DATABASE_URL","postgresql://postgres:7426@localhost:5432/flask_auth_test")
+    SQLALCHEMY_DATABASE_URI = os.environ.get(
+        "DATABASE_URL", "postgresql://postgres:7426@localhost:5432/flask_auth_test"
+    )
     BCRYPT_LOG_ROUNDS = 4
     ACCESS_TOKEN_EXPIRATION = 3
     REFRESH_TOKEN_EXPIRATION = 3

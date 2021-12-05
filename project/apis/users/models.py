@@ -1,15 +1,16 @@
 from datetime import datetime, timedelta
+from random import randint
 
 import jwt
 from flask import current_app
-from random import randint
 
-from project import db,bcrypt
+from project import bcrypt, db
+
 
 class User(db.Model):
     __tablename__ = "users"
 
-    id = db.Column(db.Integer,primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     username = db.Column(db.String(128), nullable=False)
     password = db.Column(db.String(255), nullable=False)
     active = db.Column(db.Boolean(), default=False, nullable=False)
@@ -19,12 +20,11 @@ class User(db.Model):
     def __init__(self, username="", password=""):
         self.username = username
         self.password = bcrypt.generate_password_hash(
-            password,
-            current_app.config.get("BCRYPT_LOG_ROUNDS")
+            password, current_app.config.get("BCRYPT_LOG_ROUNDS")
         ).decode()
-    
+
     def encode_token(self, username, token_type):
-        if token_type == 'access':
+        if token_type == "access":
             seconds = current_app.config.get("ACCESS_TOKEN_EXPIRATION")
         else:
             seconds = current_app.config.get("REFRESH_TOKEN_EXPIRATION")
@@ -33,26 +33,28 @@ class User(db.Model):
             "exp": datetime.utcnow() + timedelta(seconds=seconds),
             "iat": datetime.utcnow(),
             "type": token_type,
-            "sub": username
+            "sub": username,
         }
         return jwt.encode(
             payload,
             current_app.config.get("SECRET_KEY"),
             algorithm="HS256",
         )
+
     @staticmethod
     def decode_token(token):
         payload = jwt.decode(
-            token, 
-            current_app.config.get("SECRET_KEY"), 
+            token,
+            current_app.config.get("SECRET_KEY"),
             algorithms="HS256",
         )
         return payload["sub"], payload["type"]
 
+
 class Account(db.Model):
     __tablename__ = "account"
 
-    id = db.Column(db.Integer,primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     account_name = db.Column(db.String(128), nullable=False)
     username = db.Column(db.String(128), nullable=False)
     is_verified = db.Column(db.Boolean(), default=False, nullable=False)
@@ -73,5 +75,9 @@ class Activation(db.Model):
 
     def __init__(self, account_name=""):
         self.account_name = account_name
-        self.activation_code = ''.join(["{}".format(randint(0, 9)) for i in range(0, 9)])
-        self.expiration_time = datetime.utcnow() + timedelta(seconds=current_app.config.get('ACTIVATION_CODE_EXPIRATION'))
+        self.activation_code = "".join(
+            ["{}".format(randint(0, 9)) for i in range(0, 9)]
+        )
+        self.expiration_time = datetime.utcnow() + timedelta(
+            seconds=current_app.config.get("ACTIVATION_CODE_EXPIRATION")
+        )
