@@ -21,6 +21,7 @@ from project.apis.users.crud import (  # isort:skip
     verify_activation,
     verify_user,
     generate_new_activation_code,
+    update_password,
 )
 
 auth_namespace = Namespace("auth")
@@ -72,11 +73,10 @@ activation_model = auth_namespace.model(
     },
 )
 
-change_password_model = auth_namespace.clone(
+change_password_model = auth_namespace.model(
     "Change Password",
-    user,
     {
-        "old_passoword": fields.String(required=True),
+        "old_password": fields.String(required=True),
         "new_password": fields.String(required=True),
     },
 )
@@ -114,8 +114,8 @@ class Register(Resource):
 class Login(Resource):
     @auth_namespace.marshal_with(tokens)
     @auth_namespace.expect(login, validate=True)
-    @auth_namespace.response(200, "Success")
-    @auth_namespace.response(404, "User does not exitst")
+    @auth_namespace.response(401, "Invalid username or password.")
+    @auth_namespace.response(401, "User is not verified.")
     def post(self):
         post_data = request.get_json()
         username = post_data.get("username")
@@ -126,9 +126,9 @@ class Login(Resource):
             username = get_user_by_account(username).username
         user = get_user_by_username(username)
         if not user:
-            auth_namespace.abort(404, "Invalid username or password.")
+            auth_namespace.abort(401, "Invalid username or password.")
         if not bcrypt.check_password_hash(user.password, password):
-            auth_namespace.abort(404, "Invalid username or password.")
+            auth_namespace.abort(401, "Invalid username or password.")
         if not user.active:
             auth_namespace.abort(401, "User is not verified.")
         access_token = user.encode_token(user.username, "access")
@@ -163,6 +163,7 @@ class Status(Resource):
 
 
 class Refresh(Resource):
+    @auth_namespace.marshal_with(tokens)
     @auth_namespace.expect(refresh, validate=True)
     @auth_namespace.response(200, "Success")
     @auth_namespace.response(401, "Invalid token")
@@ -182,13 +183,10 @@ class Refresh(Resource):
             ):
                 auth_namespace.abort(401, "Invalid token")
             add_token_to_blacklist(refresh_token)
-            access_token = user.encode_token(user.username, "access")
-            refresh_token = user.encode_token(user.username, "refresh")
-            response_object = {
-                "access_token": access_token,
-                "refresh_token": refresh_token,
-            }
-            return response_object, 200
+            tokens = {}
+            tokens["access_token"] = user.encode_token(user.username, "access")
+            tokens["refresh_token"] = user.encode_token(user.username, "refresh")
+            return tokens, 200
         except jwt.ExpiredSignatureError:
             auth_namespace.abort(401, "Signature expired. Please log in again.")
         except jwt.InvalidTokenError:
@@ -225,7 +223,7 @@ class Logout(Resource):
 
 class Activate(Resource):
     @auth_namespace.marshal_with(account)
-    @auth_namespace.expect(activation_model)
+    @auth_namespace.expect(activation_model, validate=True)
     @auth_namespace.response(200, "Account verified successfully.")
     @auth_namespace.response(401, "Token expired/invalid.")
     def post(self):
@@ -252,7 +250,7 @@ class Activate(Resource):
 
 
 class RequestReVerification(Resource):
-    @auth_namespace.expect(account)
+    @auth_namespace.expect(account, validate=True)
     @auth_namespace.response(400, "Invalid account.")
     @auth_namespace.response(200, "New activation credentials generated.")
     def post(self):
@@ -278,17 +276,36 @@ class RequestReVerification(Resource):
 
 
 class ChangePassword(Resource):
-    @auth_namespace.expect(change_password_model)
+    @auth_namespace.expect(change_password_model,validate=True)
     @auth_namespace.expect(parser)
-    @auth_namespace.response(400, "Invalid username/password.")
-    @auth_namespace.response(401, "Invalid token.")
+    @auth_namespace.response(401, "Invalid token/password.")
+    @auth_namespace.response(401, "Signature expired. Please log in again.")
     @auth_namespace.response(200, "Password updated successfully.")
     def post(self):
         auth_header = request.headers.get("Authorization")
         if auth_header:
-            pass
+            try:
+                access_token = auth_header.split(" ")[1]
+                resp, token_type = User.decode_token(access_token)
+                user = get_user_by_username(resp)
+                if not user or token_type != "access":
+                    auth_namespace.abort(401, "Invalid token/password.")
+                post_data = request.get_json()
+                old_password = post_data.get("old_password")
+                new_password = post_data.get("new_password")
+                if not bcrypt.check_password_hash(user.password, old_password):
+                    auth_namespace.abort(401, "Invalid token/password.")
+                user = update_password(user, new_password)
+                response_object = {
+                    "message": "Password updated successfully."
+                }
+                return response_object, 200
+            except jwt.ExpiredSignatureError:
+                auth_namespace.abort(401, "Signature expired. Please log in again.")
+            except jwt.InvalidTokenError:
+                auth_namespace.abort(401, "Invalid token/password.")
         else:
-            auth_namespace.abort(401, "Invalid token.")
+            auth_namespace.abort(401, "Invalid token/password.")
 
 
 auth_namespace.add_resource(Register, "/register", endpoint="register")
@@ -298,3 +315,4 @@ auth_namespace.add_resource(Refresh, "/refresh", endpoint="refresh")
 auth_namespace.add_resource(Logout, "/logout", endpoint="logout")
 auth_namespace.add_resource(Activate, "/activate", endpoint="activate")
 auth_namespace.add_resource(RequestReVerification, "/reactivate", endpoint="reactivate")
+auth_namespace.add_resource(ChangePassword,"/change-password",endpoint="change-password")
