@@ -72,6 +72,15 @@ activation_model = auth_namespace.model(
     },
 )
 
+change_password_model = auth_namespace.clone(
+    "Change Password",
+    user,
+    {
+        "old_passoword": fields.String(required=True),
+        "new_password": fields.String(required=True),
+    },
+)
+
 parser = auth_namespace.parser()
 parser.add_argument("Authorization", location="headers")
 
@@ -132,7 +141,8 @@ class Login(Resource):
 class Status(Resource):
     @auth_namespace.marshal_with(user)
     @auth_namespace.response(200, "Success")
-    @auth_namespace.response(401, "Invalid token")
+    @auth_namespace.response(401, "Invalid token.")
+    @auth_namespace.response(401, "Signature expired. Please log in again.")
     @auth_namespace.expect(parser)
     def get(self):
         auth_header = request.headers.get("Authorization")
@@ -142,14 +152,14 @@ class Status(Resource):
                 resp, token_type = User.decode_token(access_token)
                 user = get_user_by_username(resp)
                 if not user or token_type != "access":
-                    auth_namespace.abort(401, "Invalid token")
+                    auth_namespace.abort(401, "Invalid token.")
                 return user, 200
             except jwt.ExpiredSignatureError:
                 auth_namespace.abort(401, "Signature expired. Please log in again.")
             except jwt.InvalidTokenError:
-                auth_namespace.abort(401, "Invalid token. Please log in again.")
+                auth_namespace.abort(401, "Invalid token.")
         else:
-            auth_namespace.abort(403, "Token required")
+            auth_namespace.abort(401, "Invalid token.")
 
 
 class Refresh(Resource):
@@ -265,6 +275,20 @@ class RequestReVerification(Resource):
             "message": "New activation credentials generated.",
         }
         return response_object, 200
+
+
+class ChangePassword(Resource):
+    @auth_namespace.expect(change_password_model)
+    @auth_namespace.expect(parser)
+    @auth_namespace.response(400, "Invalid username/password.")
+    @auth_namespace.response(401, "Invalid token.")
+    @auth_namespace.response(200, "Password updated successfully.")
+    def post(self):
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            pass
+        else:
+            auth_namespace.abort(401, "Invalid token.")
 
 
 auth_namespace.add_resource(Register, "/register", endpoint="register")
