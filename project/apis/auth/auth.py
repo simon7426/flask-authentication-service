@@ -22,6 +22,7 @@ from project.apis.users.crud import (  # isort:skip
     verify_user,
     generate_new_activation_code,
     update_password,
+    get_all_user_account,
 )
 
 auth_namespace = Namespace("auth")
@@ -79,6 +80,10 @@ change_password_model = auth_namespace.model(
         "old_password": fields.String(required=True),
         "new_password": fields.String(required=True),
     },
+)
+
+full_account = auth_namespace.clone(
+    "Full account", account, {"is_verified": fields.String(required=True)}
 )
 
 parser = auth_namespace.parser()
@@ -305,6 +310,59 @@ class ChangePassword(Resource):
             auth_namespace.abort(401, "Invalid token/password.")
 
 
+class Accounts(Resource):
+    @auth_namespace.expect(account)
+    @auth_namespace.expect(parser)
+    @auth_namespace.response(201, "Account added successfully. Please verify.")
+    @auth_namespace.response(401, "Signature expired. Please log in again.")
+    @auth_namespace.response(401, "Invalid token/password.")
+    def post(self):
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            try:
+                access_token = auth_header.split(" ")[1]
+                resp, token_type = User.decode_token(access_token)
+                user = get_user_by_username(resp)
+                if not user or token_type != "access":
+                    auth_namespace.abort(401, "Invalid token/password.")
+                post_data = request.get_json()
+                account_name = post_data.get("account_name")
+                account = add_account(account_name=account_name, username=user.username)
+                activation = add_activation(account_name=account.account_name)
+                # * Send account activation mail * #
+                print(activation.activation_code)
+                response_object = {
+                    "message": "Account added successfully. Please verify."
+                }
+                return response_object, 201
+            except jwt.ExpiredSignatureError:
+                auth_namespace.abort(401, "Signature expired. Please log in again.")
+            except jwt.InvalidTokenError:
+                auth_namespace.abort(401, "Invalid token/password.")
+        else:
+            auth_namespace.abort(401, "Invalid token/password.")
+
+    @auth_namespace.marshal_with(full_account)
+    @auth_namespace.expect(parser)
+    def get(self):
+        auth_header = request.headers.get("Authorization")
+        if auth_header:
+            try:
+                access_token = auth_header.split(" ")[1]
+                resp, token_type = User.decode_token(access_token)
+                user = get_user_by_username(resp)
+                if not user or token_type != "access":
+                    auth_namespace.abort(401, "Invalid token/password.")
+                accounts = get_all_user_account(user.username)
+                return accounts, 200
+            except jwt.ExpiredSignatureError:
+                auth_namespace.abort(401, "Signature expired. Please log in again.")
+            except jwt.InvalidTokenError:
+                auth_namespace.abort(401, "Invalid token/password.")
+        else:
+            auth_namespace.abort(401, "Invalid token/password.")
+
+
 auth_namespace.add_resource(Register, "/register", endpoint="register")
 auth_namespace.add_resource(Login, "/login", endpoint="login")
 auth_namespace.add_resource(Status, "/status", endpoint="status")
@@ -315,3 +373,4 @@ auth_namespace.add_resource(RequestReVerification, "/reactivate", endpoint="reac
 auth_namespace.add_resource(
     ChangePassword, "/change-password", endpoint="change-password"
 )
+auth_namespace.add_resource(Accounts, "/account", endpoint="account")

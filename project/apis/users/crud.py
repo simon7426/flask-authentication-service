@@ -30,6 +30,10 @@ def get_account(account_name):
     return Account.query.filter_by(account_name=account_name).first()
 
 
+def get_all_user_account(username):
+    return Account.query.filter_by(username=username).all()
+
+
 def get_activation(account_name, activation_code=""):
     if activation_code:
         return Activation.query.filter_by(
