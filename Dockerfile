@@ -1,20 +1,29 @@
+# official image
 FROM python:3.8.12-slim-buster
 
+# working directory
+WORKDIR /app
+
+# environment variable
 ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
-ENV FLASK_ENV production
-ENV SERVER_NO $SERVER_NO
 
+# install system dependencies
 RUN apt-get update \
-  && apt-get -y install netcat \
+  && apt-get -y install netcat gcc postgresql \
   && apt-get clean
 
-COPY ./requirements.txt .
-RUN pip install -r requirements.txt
 
+# install dependencies
+RUN pip install --upgrade pip
+COPY ./requirements.txt .
+COPY ./requirements-dev.txt .
+RUN pip install -r requirements-dev.txt
+
+# add application
 COPY . .
 
-RUN adduser --disabled-password myuser
-USER myuser
-
-CMD gunicorn --workers 3 --bind 0.0.0.0:$PORT manage:app
+# add entrypoint.sh
+COPY ./entrypoint.sh .
+RUN chmod +x /app/entrypoint.sh
+ENTRYPOINT [ "./entrypoint.sh" ]
