@@ -3,7 +3,7 @@ from random import randint
 
 from flask import current_app
 
-from project import db, bcrypt
+from project import bcrypt, db
 from project.apis.users.models import Account, Activation, User
 
 
@@ -102,6 +102,8 @@ def generate_new_activation_code(activation):
 
 
 def update_password(user, new_password):
-    user.password = bcrypt.generate_password_hash(new_password, current_app.config.get("BCRYPT_LOG_ROUNDS")).decode('utf-8')
+    user.password = bcrypt.generate_password_hash(
+        new_password, current_app.config.get("BCRYPT_LOG_ROUNDS")
+    ).decode("utf-8")
     db.session.commit()
     return user

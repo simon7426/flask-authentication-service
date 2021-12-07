@@ -170,7 +170,6 @@ class Refresh(Resource):
     def post(self):
         post_data = request.get_json()
         refresh_token = post_data.get("refresh_token")
-        response_object = {}
 
         try:
             resp, token_type = User.decode_token(refresh_token)
@@ -276,7 +275,7 @@ class RequestReVerification(Resource):
 
 
 class ChangePassword(Resource):
-    @auth_namespace.expect(change_password_model,validate=True)
+    @auth_namespace.expect(change_password_model, validate=True)
     @auth_namespace.expect(parser)
     @auth_namespace.response(401, "Invalid token/password.")
     @auth_namespace.response(401, "Signature expired. Please log in again.")
@@ -296,9 +295,7 @@ class ChangePassword(Resource):
                 if not bcrypt.check_password_hash(user.password, old_password):
                     auth_namespace.abort(401, "Invalid token/password.")
                 user = update_password(user, new_password)
-                response_object = {
-                    "message": "Password updated successfully."
-                }
+                response_object = {"message": "Password updated successfully."}
                 return response_object, 200
             except jwt.ExpiredSignatureError:
                 auth_namespace.abort(401, "Signature expired. Please log in again.")
@@ -315,4 +312,6 @@ auth_namespace.add_resource(Refresh, "/refresh", endpoint="refresh")
 auth_namespace.add_resource(Logout, "/logout", endpoint="logout")
 auth_namespace.add_resource(Activate, "/activate", endpoint="activate")
 auth_namespace.add_resource(RequestReVerification, "/reactivate", endpoint="reactivate")
-auth_namespace.add_resource(ChangePassword,"/change-password",endpoint="change-password")
+auth_namespace.add_resource(
+    ChangePassword, "/change-password", endpoint="change-password"
+)

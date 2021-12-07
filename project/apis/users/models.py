@@ -21,7 +21,7 @@ class User(db.Model):
         self.username = username
         self.password = bcrypt.generate_password_hash(
             password, current_app.config.get("BCRYPT_LOG_ROUNDS")
-        ).decode('utf-8')
+        ).decode("utf-8")
 
     def encode_token(self, username, token_type):
         if token_type == "access":
