@@ -20,6 +20,7 @@ from project.apis.users.crud import (  # isort:skip
     verify_account,
     verify_activation,
     verify_user,
+    generate_new_activation_code,
 )
 
 auth_namespace = Namespace("auth")
@@ -237,7 +238,33 @@ class Activate(Resource):
         verify_account(account)
         if not user.active:
             verify_user(user)
-        return account
+        return account, 200
+
+
+class RequestReVerification(Resource):
+    @auth_namespace.expect(account)
+    @auth_namespace.response(400, "Invalid account.")
+    @auth_namespace.response(200, "New activation credentials generated.")
+    def post(self):
+        post_data = request.get_json()
+        account_name = post_data.get("account_name")
+        account = get_account(account_name=account_name)
+        activation = get_activation(account_name=account_name)
+        if (
+            not account
+            or not activation
+            or activation.expiration_time > datetime.utcnow()
+        ):
+            auth_namespace.abort(400, "Invalid account")
+        if activation.status or account.is_verified:
+            auth_namespace.abort(400, "Invalid account.")
+        new_activation = generate_new_activation_code(activation)
+        # * Send account activation mail * #
+        print(new_activation.activation_code)
+        response_object = {
+            "message": "New activation credentials generated.",
+        }
+        return response_object, 200
 
 
 auth_namespace.add_resource(Register, "/register", endpoint="register")
@@ -246,3 +273,4 @@ auth_namespace.add_resource(Status, "/status", endpoint="status")
 auth_namespace.add_resource(Refresh, "/refresh", endpoint="refresh")
 auth_namespace.add_resource(Logout, "/logout", endpoint="logout")
 auth_namespace.add_resource(Activate, "/activate", endpoint="activate")
+auth_namespace.add_resource(RequestReVerification, "/reactivate", endpoint="reactivate")

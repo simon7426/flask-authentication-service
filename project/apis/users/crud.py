@@ -1,3 +1,8 @@
+from datetime import datetime, timedelta
+from random import randint
+
+from flask import current_app
+
 from project import db
 from project.apis.users.models import Account, Activation, User
 
@@ -25,10 +30,12 @@ def get_account(account_name):
     return Account.query.filter_by(account_name=account_name).first()
 
 
-def get_activation(account_name, activation_code):
-    return Activation.query.filter_by(
-        account_name=account_name, activation_code=activation_code
-    ).first()
+def get_activation(account_name, activation_code=""):
+    if activation_code:
+        return Activation.query.filter_by(
+            account_name=account_name, activation_code=activation_code
+        ).first()
+    return Activation.query.filter_by(account_name=account_name).first()
 
 
 def add_user(username, password):
@@ -79,5 +86,16 @@ def verify_account(account):
 
 def verify_activation(activation):
     activation.status = True
+    db.session.commit()
+    return activation
+
+
+def generate_new_activation_code(activation):
+    activation.activation_code = "".join(
+        ["{}".format(randint(0, 9)) for i in range(0, 9)]
+    )
+    activation.expiration_time = datetime.utcnow() + timedelta(
+        seconds=current_app.config.get("ACTIVATION_CODE_EXPIRATION")
+    )
     db.session.commit()
     return activation
