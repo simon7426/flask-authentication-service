@@ -26,6 +26,7 @@ class TestingConfig(BaseConfig):
     BCRYPT_LOG_ROUNDS = 4
     ACCESS_TOKEN_EXPIRATION = 3
     REFRESH_TOKEN_EXPIRATION = 3
+    ACTIVATION_CODE_EXPIRATION = 3
 
 
 class ProductionConfig(BaseConfig):
